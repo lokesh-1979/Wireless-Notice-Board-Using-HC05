@@ -1,0 +1,85 @@
+#include <SPI.h>
+#include <DMD.h>
+#include <TimerOne.h>
+#include "SystemFont5x7.h"
+#include "Arial_black_16.h"
+#include <SoftwareSerial.h>
+
+#define ROW_MODULE 2
+#define COLUMN_MODULE 1
+
+DMD p10(ROW_MODULE, COLUMN_MODULE);
+SoftwareSerial bluetoothSerial(10, 11);  // RX, TX pins for HC-05 module
+
+char message[500];
+char char_read;
+byte pos_index = 0;
+int i;
+char welcome_screen[] = "JERUSALEM COLLEGE OF ENGINEERING-ECE DEPARTMENT";
+
+void p10scan()
+{
+  p10.scanDisplayBySPI();
+}
+
+void setup()
+{
+  Timer1.initialize(2000);
+  Timer1.attachInterrupt(p10scan);
+  p10.clearScreen(true);
+  Serial.begin(9600);
+  bluetoothSerial.begin(9600); // Set the baud rate for HC-05 module
+  strcpy(message, welcome_screen);
+}
+
+void loop()
+{
+  if (Serial.available())
+  {
+    for (i = 0; i < 499; i++)
+    {
+      message[i] = '\0';
+      Serial.print(message[i]);
+    }
+    pos_index = 0;
+  }
+
+  while (Serial.available() > 0)
+  {
+    p10.clearScreen(true);
+    if (pos_index < (499))
+    {
+      char_read = Serial.read();
+      message[pos_index] = char_read;
+      pos_index++;
+    }
+  }
+
+  while (bluetoothSerial.available() > 0)
+  {
+    p10.clearScreen(true);
+    if (pos_index < (499))
+    {
+      char_read = bluetoothSerial.read();
+      message[pos_index] = char_read;
+      pos_index++;
+    }
+  }
+
+  p10.selectFont(Arial_Black_16);
+  int messageLength = strlen(message);
+  p10.drawMarquee(message, (messageLength * 6), (messageLength * 6) + (16 * ROW_MODULE) - 1, 0);
+  
+  long start = millis();
+  long timer_start = start;
+  boolean flag = false;
+  
+  while (!flag)
+  {
+    if ((timer_start + 30) < millis())
+    {
+      flag = p10.stepMarquee(-1, 0);
+      timer_start = millis();
+    }
+  }
+}
